@@ -99,16 +99,22 @@ class _PgRow(dict):
 
 def get_db():
     if USE_PG:
-        # Parse DATABASE_URL for pg8000
         import urllib.parse
-        url = urllib.parse.urlparse(DATABASE_URL)
+        # Strip brackets Supabase sometimes wraps around the hostname
+        db_url = DATABASE_URL.replace('[', '').replace(']', '')
+        url = urllib.parse.urlparse(db_url)
+        # pg8000 needs SSL for Supabase
+        import ssl
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
         conn = pg8000.connect(
             host=url.hostname,
             port=url.port or 5432,
             database=url.path.lstrip('/'),
             user=url.username,
             password=url.password,
-            ssl_context=True  # Supabase requires SSL
+            ssl_context=ssl_ctx
         )
         conn.autocommit = False
         return _PgConn(conn)
